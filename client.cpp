@@ -33,7 +33,7 @@ int main(){
     serverAddr.sin_port = htons(8080);
     inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
     if(connect(clientSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
-        cout<<"Connection failed"<<endl;
+        perror("Connection failed");
         return -1;
     }
     cout<<"Connected to server"<<endl;
