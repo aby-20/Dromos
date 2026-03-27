@@ -1,32 +1,58 @@
-// C++ program to illustrate the client application in the
-// socket programming
-#include <cstring>
-#include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include<iostream>
+#include<sys/socket.h>
+#include<arpa/inet.h>
+#include<unistd.h>
+#include<cstring>
+#include<thread>
+using namespace std;
 
-int main()
-{
-    // creating socket
+void receiveMessages(int sock){
+    char buffer[1024]= {0};
+    while(true){
+        int bytes = recv(sock, buffer, sizeof(buffer), 0);
+        if(bytes <= 0){
+            cout<<"Disconnected from server"<<endl;
+            break;
+        }
+        cout<<"Server\n"<<buffer<<endl;
+    }
+}
+void sentMessages(int sock){
+    while(true){
+        string message;
+        getline(cin,message);
+        send(sock, message.c_str(), message.size(), 0);
+    }
+}
+
+int main(){
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    // specifying address
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(8080);
+    inet_pton(AF_INET, "127.0.0.1", &serverAddr.sin_addr);
+    if(connect(clientSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
+        cout<<"Connection failed"<<endl;
+        return -1;
+    }
+    cout<<"Connected to server"<<endl;
 
-    // sending connection request
-    connect(clientSocket, (struct sockaddr*)&serverAddress,
-            sizeof(serverAddress));
+    string username;
+    cout<<"Enter your username: ";
+    getline(cin, username);
+    send(clientSocket, username.c_str(), username.size(), 0);
 
-    // sending data
-    const char* message = "Hello, server!";
-    send(clientSocket, message, strlen(message), 0);
-
-    // closing socket
+    thread receiveThread(receiveMessages, clientSocket);
+    thread sendThread(sentMessages, clientSocket);
+    receiveThread.join();
+    sendThread.detach();
     close(clientSocket);
 
     return 0;
+
 }
+
+
+
+
