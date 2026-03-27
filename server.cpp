@@ -1,43 +1,80 @@
-// C++ program to show the example of server application in
-// socket programming
-#include <cstring>
-#include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include<iostream>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<unistd.h>
+#include<cstring>
+#include<mutex>
+#include<map>
+#include<thread>
 
 using namespace std;
 
-int main()
-{
-    // creating socket
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+map<int,string>clients;
+mutex client_mutex;
 
-    // specifying the address
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-
-    // binding socket.
-    bind(serverSocket, (struct sockaddr*)&serverAddress,
-         sizeof(serverAddress));
-
-    // listening to the assigned socket
-    listen(serverSocket, 5);
-
-    // accepting connection request
-    int clientSocket
-        = accept(serverSocket, nullptr, nullptr);
-
-    // recieving data
-    char buffer[1024] = { 0 };
-    recv(clientSocket, buffer, sizeof(buffer), 0);
-    cout << "Message from client: " << buffer
-              << endl;
-
-    // closing the socket.
-    close(serverSocket);
-
-    return 0;
+void broadcast(string message,int sender_socket){
+    lock_guard<mutex> lock(client_mutex);
+    for(auto& client : clients){
+        if(client.first != sender_socket){
+            send(client.first, message.c_str(), message.size(), 0);
+        }
+    }
 }
+void handle_client(int clientSocket){
+    char buffer[1024] = {0};
+   int bytes = recv(clientSocket, buffer, 1024, 0);
+   if(bytes<=0){
+       close(clientSocket);
+       return;
+    }
+    string username(buffer)
+    {
+        lock_guard<mutex> lock(client_mutex);
+        clients[clientSocket] = username;
+    }
+    string joinMsg = username + " has joined the chat!";
+    broadcast(joinMsg, clientSocket);
+while(true){
+    memset(buffer, 0, sizeof(buffer));
+    int bytes = recv(clientSocket, buffer, sizeof(buffer), 0);
+    if(bytes <= 0){
+        cout<<username<<"disconnected"<<endl;
+        {
+            lock_guard<mutex> lock(client_mutex);
+            clients.erase(clientSocket);
+        }
+        string leaveMsg = username + " has left the chat!";
+        broadcast(leaveMsg, clientSocket);
+        close(clientSocket);
+        break;
+    }
+    string message = username + ": " + string(buffer);
+    broadcast(message, clientSocket);
+
+}
+int main(){
+    serversocket = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(8080);
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr));
+    listen(serverSocket, 5);
+    cout<<"Server is running on port 8080..."<<endl;
+while(true){
+    int clientSocket = accept(serverSocket,nullptr,nullptr);
+    thread t(handle_client, clientSocket);
+    t.detach();
+}
+close(serverSocket);
+return 0;
+
+}
+
+
+
+
+
+}
+
+
