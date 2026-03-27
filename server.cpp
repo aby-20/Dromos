@@ -3,6 +3,7 @@
 #include<netinet/in.h>
 #include<unistd.h>
 #include<cstring>
+#include<string>
 #include<mutex>
 #include<map>
 #include<thread>
@@ -21,21 +22,47 @@ void broadcast(string message,int sender_socket){
     }
 }
 void handle_client(int clientSocket){
-    char buffer[1024] = {0};
-   int bytes = recv(clientSocket, buffer, 1024, 0);
+    char buffer[1024];
+    string data;
+    string username;
+while(true){
+   int bytes = recv(clientSocket, buffer, sizeof(buffer), 0);
    if(bytes<=0){
        close(clientSocket);
        return;
     }
-    string username(buffer);
+    data.append(buffer, bytes);
+    size_t pos = data.find('\n');
+    if(pos != string::npos){
+        username = data.substr(0, pos);
+        data.erase(0, pos + 1);
+        
+        data.clear();
+        break;
+    }
+
+       
+}
+
     {
         lock_guard<mutex> lock(client_mutex);
         clients[clientSocket] = username;
     }
-    string joinMsg = username + " has joined the chat!";
+
+  string joinMsg = username + " has joined the chat!\n";
+  cout<<joinMsg;
     broadcast(joinMsg, clientSocket);
+     size_t pos2;
+        while((pos2=data.find('\n')) != string::npos){
+            string msg = data.substr(0, pos2);
+            string fullMsg = username + ": " + msg + "\n";
+            cout<<fullMsg;
+            broadcast(fullMsg, clientSocket);
+            data.erase(0, pos2 + 1);
+        }
+    
+    
 while(true){
-    memset(buffer, 0, sizeof(buffer));
     int bytes = recv(clientSocket, buffer, sizeof(buffer), 0);
     if(bytes <= 0){
         cout<<username<<"disconnected"<<endl;
@@ -43,13 +70,28 @@ while(true){
             lock_guard<mutex> lock(client_mutex);
             clients.erase(clientSocket);
         }
-        string leaveMsg = username + " has left the chat!";
+        string leaveMsg = username + " has left the chat!\n";
         broadcast(leaveMsg, clientSocket);
         close(clientSocket);
         break;
+    
     }
-    string message = username + ": " + string(buffer);
-    broadcast(message, clientSocket);
+    data.append(buffer, bytes);
+    size_t pos;
+    while((pos = data.find('\n')) != string::npos){
+        
+        string msg = data.substr(0, pos);
+        if(msg.empty()){
+            data.erase(0, pos + 1);
+            continue;
+
+        } 
+        string fullMsg = username + ": " + msg + "\n";  
+        cout<<fullMsg;
+        broadcast(fullMsg, clientSocket);
+        data.erase(0, pos + 1);
+    }
+
 }
 }
 int main(){

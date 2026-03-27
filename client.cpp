@@ -7,20 +7,32 @@
 using namespace std;
 
 void receiveMessages(int sock){
-    char buffer[1024]= {0};
+    char buffer[1024];
+    string data;
     while(true){
         int bytes = recv(sock, buffer, sizeof(buffer), 0);
         if(bytes <= 0){
             cout<<"Disconnected from server"<<endl;
             break;
         }
-        cout<<"Server\n"<<buffer<<endl;
+        data.append(buffer, bytes);
+
+        size_t pos;
+        while((pos = data.find('\n')) != string::npos){
+            string msg = data.substr(0, pos);
+            if(!msg.empty()){
+                cout<<msg<<endl;
+            }
+            data.erase(0, pos + 1);
+        }
+        
     }
 }
 void sentMessages(int sock){
     while(true){
         string message;
         getline(cin,message);
+        message += "\n";
         send(sock, message.c_str(), message.size(), 0);
     }
 }
@@ -41,6 +53,7 @@ int main(){
     string username;
     cout<<"Enter your username: ";
     getline(cin, username);
+    username+="\n";
     send(clientSocket, username.c_str(), username.size(), 0);
 
     thread receiveThread(receiveMessages, clientSocket);
