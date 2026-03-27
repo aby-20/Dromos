@@ -27,7 +27,7 @@ void handle_client(int clientSocket){
        close(clientSocket);
        return;
     }
-    string username(buffer)
+    string username(buffer);
     {
         lock_guard<mutex> lock(client_mutex);
         clients[clientSocket] = username;
@@ -50,10 +50,10 @@ while(true){
     }
     string message = username + ": " + string(buffer);
     broadcast(message, clientSocket);
-
+}
 }
 int main(){
-    serversocket = socket(AF_INET, SOCK_STREAM, 0);
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(8080);
@@ -75,6 +75,6 @@ return 0;
 
 
 
-}
+
 
 
